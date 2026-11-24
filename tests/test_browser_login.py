@@ -9,6 +9,7 @@ import tempfile
 import threading
 import time
 import unittest
+from browser_utils import encerrar_browser, aguardar_devtools
 from unittest.mock import MagicMock, patch
 from urllib.request import build_opener, ProxyHandler
 
@@ -101,7 +102,7 @@ class TestFormularioNativo(unittest.TestCase):
                     while not arquivo.is_file() and time.monotonic() < limite:
                         time.sleep(0.05)
                     self.assertTrue(arquivo.is_file(), "Chrome headless não iniciou")
-                    porta_cdp = int(arquivo.read_text().splitlines()[0])
+                    porta_cdp = int(aguardar_devtools(perfil)[0])
                     opener = build_opener(ProxyHandler({}))
                     with opener.open(f"http://127.0.0.1:{porta_cdp}/json/list", timeout=5) as resposta:
                         paginas = json.load(resposta)
@@ -137,8 +138,7 @@ class TestFormularioNativo(unittest.TestCase):
                         self.assertEqual(enviar_formulario(adulterar=True), ("correta", 403))
                         autenticar.assert_called_once()
                 finally:
-                    browser.terminate()
-                    browser.wait(timeout=10)
+                    encerrar_browser(browser, perfil)
                     browser = None
         finally:
             if browser is not None:

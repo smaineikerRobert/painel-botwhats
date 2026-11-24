@@ -105,3 +105,27 @@ class SessoesServidor:
             return
         with registro.lock:
             sair_cliente(registro.cliente)
+
+    def identidade(self, sid):
+        """Somente dados públicos do próprio usuário verificado; nunca tokens."""
+        registro = self._obter(sid)
+        if registro is None:
+            raise PermissionError("Sessão indisponível.")
+        with registro.lock:
+            try:
+                if not self.existe(sid):
+                    raise PermissionError("Sessão indisponível.")
+                _, usuario = validar_cliente_dono(registro.cliente, retornar_usuario=True)
+                uid = getattr(usuario, "id", None)
+                if not isinstance(uid, str) or not uid or len(uid) > 128:
+                    raise PermissionError("Identidade indisponível.")
+                email = getattr(usuario, "email", "")
+                metadata = getattr(usuario, "user_metadata", {})
+                nome = metadata.get("preferred_name", "") if isinstance(metadata, dict) else ""
+                if self._obter(sid) is not registro or not self.existe(sid):
+                    raise PermissionError("Sessão indisponível.")
+                return {"id": uid, "email": email if isinstance(email, str) else "",
+                        "nome": nome[:80] if isinstance(nome, str) else ""}
+            except Exception:
+                self.revogar(sid)
+                raise PermissionError("Não foi possível confirmar a identidade.") from None

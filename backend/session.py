@@ -44,8 +44,7 @@ def proteger_painel():
             st.info("Entre novamente para confirmar seu acesso.")
             st.link_button("Entrar", "/auth/login")
         st.stop()
-    # Navegação de página inteira: o endpoint HTTP pode remover o cookie HttpOnly.
-    st.sidebar.link_button("Sair", "/auth/logout")
+    # A apresentação do logout fica no shell e no perfil; ambos usam /auth/logout.
 
 
 # Funções de sessão em memória mantidas para compatibilidade e testes antigos.

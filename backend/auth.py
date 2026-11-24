@@ -7,7 +7,7 @@ from backend.supabase_client import criar_cliente_supabase
 from backend.auth_diagnostics import registrar
 
 
-def validar_cliente_dono(cliente, renovar=False):
+def validar_cliente_dono(cliente, renovar=False, retornar_usuario=False):
     """Valida no servidor; get_session renova o token quando necessário."""
     sessao = (cliente.auth.refresh_session().session if renovar
               else cliente.auth.get_session())
@@ -18,7 +18,7 @@ def validar_cliente_dono(cliente, renovar=False):
         raise PermissionError("Identidade inválida.")
     if cliente.rpc("sou_dono").execute().data is not True:
         raise PermissionError("Usuário não autorizado.")
-    return sessao
+    return (sessao, resposta.user) if retornar_usuario else sessao
 
 
 def autenticar_dono(email: str, senha: str):

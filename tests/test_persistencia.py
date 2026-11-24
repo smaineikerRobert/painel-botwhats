@@ -447,10 +447,10 @@ class TestPainelPersistente(unittest.TestCase):
     def test_quatro_paginas(self):
         self.app.run()
         opcoes = list(self.app.radio[0].options)
-        self.assertEqual(len(opcoes), 4)
+        self.assertEqual(len(opcoes), 5)
         titulos = ["Conexão do WhatsApp", "Regras de Resposta", "Envio de Mensagens em Massa",
                    "Configurações Visuais (White Label)"]
-        for pagina, titulo in zip(opcoes, titulos):
+        for pagina, titulo in zip(opcoes[:4], titulos):
             self.app.radio[0].set_value(pagina).run()
             self.assertFalse(self.app.exception)
             self.assertEqual(self.app.title[0].value, titulo)

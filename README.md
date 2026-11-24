@@ -1,5 +1,8 @@
 # Painel BotWhats
 
+Redesign, temas e estado da persistência de Meu Perfil:
+[docs/REDESIGN_PERFIL.md](docs/REDESIGN_PERFIL.md).
+
 Etapa 57 — prazos, renovação e homologação de sessões:
 [docs/ETAPA57_SESSOES.md](docs/ETAPA57_SESSOES.md).
 

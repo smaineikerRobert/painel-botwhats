@@ -44,6 +44,10 @@ def main():
     os.environ["STREAMLIT_BROWSER_GATHER_USAGE_STATS"] = "false"
     os.environ["STREAMLIT_SERVER_ENABLE_AGENT_API"] = "false"
     os.environ["STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION"] = "true"
+    os.environ["STREAMLIT_SERVER_HEADLESS"] = "true"
+    os.environ["STREAMLIT_CLIENT_TOOLBAR_MODE"] = "minimal"
+    from backend.runtime_config import configurar_streamlit
+    configurar_streamlit(args.origin)
     configurar_diagnosticos()
     app = criar_gateway(config)
     # Nunca abre interfaces públicas e nunca registra URLs ou corpos de login.

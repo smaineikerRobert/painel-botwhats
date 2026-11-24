@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 import asyncio
+import anyio
 import hashlib
 import hmac
 from html import escape
@@ -18,6 +19,8 @@ from starlette.datastructures import Headers
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 from starlette.routing import Route, Mount
+from starlette.staticfiles import StaticFiles
+from pathlib import Path
 
 from backend.auth import autenticar_dono
 from backend.session_store import SessoesServidor, sair_cliente
@@ -193,11 +196,16 @@ class SessaoHTTP:
                 await asyncio.wait((tarefa_app, tarefa_vigia), return_when=asyncio.FIRST_COMPLETED)
                 if tarefa_app.done():
                     await tarefa_app
+            except asyncio.CancelledError:
+                # Desconexão/teardown do ASGI: encerra as tarefas filhas sem
+                # transformar o fechamento normal em erro no cliente.
+                fechado = True
             finally:
                 for tarefa in (tarefa_app, tarefa_vigia):
                     if not tarefa.done():
                         tarefa.cancel()
-                await asyncio.gather(tarefa_app, tarefa_vigia, return_exceptions=True)
+                with anyio.CancelScope(shield=True):
+                    await asyncio.gather(tarefa_app, tarefa_vigia, return_exceptions=True)
             return
         return await self.app(scope, receive, send)
 
@@ -313,16 +321,8 @@ def criar_gateway(config, sessoes=None, autenticar=autenticar_dono, app_streamli
         <label>Senha <input name="senha" type="password" autocomplete="current-password" required></label>'''
         titulo = "Encerrar sessão" if sair else "Acesso administrativo"
         texto = "Sair" if sair else "Entrar"
-        resposta = HTMLResponse(f'''<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
-        <meta name="referrer" content="{POLITICA_REFERENCIA}">
-        <meta name="viewport" content="width=device-width, initial-scale=1"><title>BotWhats — {titulo}</title>
-        <style>body{{font:18px system-ui;max-width:30rem;margin:5rem auto;padding:1rem}}
-        label,input{{display:block;margin:1rem 0;width:100%}}input,button{{font:inherit;padding:.5rem}}
-        .erro{{color:#a11}}</style></head><body><h1>🤖 BotWhats</h1><h2>{titulo}</h2>
-        <p class="erro">{escape(erro)}</p><form method="post" action="{destino}" target="_self"
-        accept-charset="UTF-8" enctype="application/x-www-form-urlencoded">
-        <input type="hidden" name="csrf" value="{escape(csrf)}">{campos}<button>{texto}</button></form>
-        <p><a href="/">Voltar ao painel</a></p></body></html>''', status_code=status)
+        from ui.auth import renderizar_auth
+        resposta = HTMLResponse(renderizar_auth(destino, csrf, campos, titulo, texto, erro, POLITICA_REFERENCIA), status_code=status)
         cookie(resposta, config.cookie_csrf, csrf, 600)
         registrar("formulario", "aprovado", "renderizado")
         return resposta
@@ -389,7 +389,6 @@ def criar_gateway(config, sessoes=None, autenticar=autenticar_dono, app_streamli
     from backend import session_runtime
     session_runtime.sessoes = sessoes
     if app_streamlit is None:
-        from pathlib import Path
         import streamlit as st
         app_streamlit = st.App(str(Path(__file__).resolve().parents[1] / "app.py"))
         lifespan = app_streamlit.lifespan()
@@ -398,6 +397,7 @@ def criar_gateway(config, sessoes=None, autenticar=autenticar_dono, app_streamli
     app = Starlette(routes=[
         Route("/auth/login", login, methods=["GET", "POST"]),
         Route("/auth/logout", logout, methods=["GET", "POST"]),
+        Mount("/ui-assets", app=StaticFiles(directory=Path(__file__).resolve().parents[1] / "assets")),
         Mount("/", app=app_streamlit),
     ], lifespan=lifespan, debug=False)
 
